@@ -1,26 +1,19 @@
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
 
-public class TestTriGramCount {
+public class Main {
 
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
 
         String inPath = "/user/rocks1/15307130288/input/test/testdata.xml";
+//        /user/rocks1/15307130288/input/data/news_sohusite_xml.dat
         String tmpPath = "/user/rocks1/15307130288/output/tmp/01";
         String outPath = "/user/rocks1/15307130288/output/test/";
         if (args.length >= 2) {
@@ -38,7 +31,7 @@ public class TestTriGramCount {
         conf.set("charsetName", "UTF-8");
 
         Job job = Job.getInstance(conf, "count test job");
-        job.setJarByClass(TestTriGramCount.class);
+        job.setJarByClass(Main.class);
         job.setMapperClass(TriGramCount.TriGramMapper.class);
         job.setReducerClass(TriGramCount.TriGramReducer.class);
         job.setMapOutputKeyClass(Text.class);
@@ -54,7 +47,7 @@ public class TestTriGramCount {
 
         conf = new Configuration();
         Job job2 = Job.getInstance(conf, "freq test job");
-        job2.setJarByClass(TestTriGramCount.class);
+        job2.setJarByClass(Main.class);
         job2.setMapperClass(GramFreq.FreqMapper.class);
         job2.setReducerClass(GramFreq.FreqReducer.class);
         job2.setMapOutputKeyClass(Text.class);

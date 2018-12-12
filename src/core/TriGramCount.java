@@ -10,9 +10,11 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class TriGramCount {
+
     public static class TriGramMapper
             extends Mapper<Object, Text, Text, LongWritable> {
         private Map<String, Long> wordCount = new HashMap<String, Long>();
+        long nWords = 0L;
         final int N = 3;
 
         private void add(String str) {
@@ -27,25 +29,30 @@ public class TriGramCount {
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
             wordCount.clear();
+            nWords = 0L;
+        }
+
+        private void addTri(String str) {
+            final int length = str.length();
+            for(int i=0; i < length; ++i) {
+                add(str.substring(i, i+1));
+                nWords += 1;
+                if(i+1 < length) {
+                    add(str.substring(i, i+2));
+                    if(i+2 < length) {
+                        add(str.substring(i, i+3));
+                    }
+                }
+            }
         }
 
         @Override
         protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
             String str = value.toString();
-            final int length = str.codePointCount(0, str.length());
-            int[] buf = new int[length];
-            for(int i = 0; i<length; ++i) {
-                int idx = str.offsetByCodePoints(0, i);
-                buf[i] = str.codePointAt(idx);
-            }
-            for(int i=0; i < length; ++i) {
-                add(new String(buf, i ,1));
-                if(i + 1 < length) {
-                    add(new String(buf, i, 2));
-                    if(i + 2 < length) {
-                        add(new String(buf, i, 3));
-                    }
-                }
+            str = Utils.filter(str);
+            String[] tokens = Utils.splitPunct(str);
+            for(String t : tokens) {
+                if(t.length() > 0) addTri(t);
             }
         }
 
@@ -53,6 +60,10 @@ public class TriGramCount {
         protected void cleanup(Context context) throws IOException, InterruptedException {
             Text key = new Text();
             LongWritable value = new LongWritable();
+            key.set("<all>");
+            value.set(nWords);
+            context.write(key, value);
+
             for(Map.Entry<String, Long> kv : wordCount.entrySet()) {
                 key.set(kv.getKey());
                 value.set(kv.getValue());

@@ -19,8 +19,9 @@ public class XMLRecordReader extends RecordReader<LongWritable, Text> {
     byte[][] endNodes;
     FSDataInputStream stream;
     private final DataOutputBuffer buffer = new DataOutputBuffer();
+    private String charsetName;
 
-    XMLRecordReader(String[] nodes) {
+    XMLRecordReader(String[] nodes, String _charsetName) {
         _nodes = nodes.clone();
         int size = nodes.length;
         startNodes = new byte[size][];
@@ -29,6 +30,7 @@ public class XMLRecordReader extends RecordReader<LongWritable, Text> {
             startNodes[i] = ("<" + nodes[i] + ">").getBytes();
             endNodes[i] = ("</" + nodes[i] + ">").getBytes();
         }
+        this.charsetName = _charsetName;
     }
 
     public void initialize(InputSplit inputSplit, TaskAttemptContext context) throws IOException, InterruptedException {
@@ -82,7 +84,9 @@ public class XMLRecordReader extends RecordReader<LongWritable, Text> {
                 try {
                     // read data
                     int node = findMatch(endNodes, true);
-                    value.set(buffer.getData(), 0, buffer.getLength() - endNodes[curNode].length);
+                    int len = buffer.getLength() - endNodes[curNode].length;
+                    value.set(new String(buffer.getData(), 0, len, charsetName));
+//                    value.set(buffer.getData(), 0, buffer.getLength() - endNodes[curNode].length);
                     return true;
                 } finally {
                     buffer.reset();
