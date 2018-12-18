@@ -1,19 +1,11 @@
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
 
 public class TestTriGramCount {
 
@@ -39,8 +31,8 @@ public class TestTriGramCount {
 
         Job job = Job.getInstance(conf, "count test job");
         job.setJarByClass(TestTriGramCount.class);
-        job.setMapperClass(TriGramCount.TriGramMapper.class);
-        job.setReducerClass(TriGramCount.TriGramReducer.class);
+        job.setMapperClass(NGramCount.CountMapper.class);
+        job.setReducerClass(NGramCount.CountReducer.class);
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(LongWritable.class);
         job.setInputFormatClass(XMLInputFormat.class);

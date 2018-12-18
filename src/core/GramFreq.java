@@ -1,5 +1,3 @@
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.*;
@@ -15,6 +13,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class GramFreq {
+    public static final String NumWordName = "NumofWord";
     public Job createJob(Configuration conf, Path inPath, Path outPath) throws IOException, InterruptedException {
         Job job = Job.getInstance(conf, "GramFreqCalculation");
         job.setJarByClass(getClass());
@@ -70,6 +69,7 @@ public class GramFreq {
             final int length = str.length();
 
             if(str.equals("<all>")) {
+                context.getConfiguration().setLong(NumWordName, val);
                 context.getCounter(VocabCounter.TOTAL_VOCAB).setValue(val);
                 return;
             }
@@ -87,12 +87,9 @@ public class GramFreq {
         protected void cleanup(Context context) throws IOException, InterruptedException {
             Text key = new Text();
 
-            long nWords = context.getCounter(VocabCounter.TOTAL_VOCAB).getValue();
-
             for(Map.Entry<String, MapWritable> kv : charMap.entrySet()) {
                 key.set(kv.getKey());
                 MapWritable fmap = kv.getValue();
-                fmap.put(new Text("<all>"), new LongWritable(nWords));
                 context.write(key, fmap);
             }
             charMap.clear();
@@ -101,12 +98,11 @@ public class GramFreq {
 
 
     public static class FreqReducer
-            extends Reducer<Text, MapWritable, Text, DoubleWritable> {
-        private Map<String, Long> bin = new HashMap<String, Long>();
+            extends Reducer<Text, MapWritable, Text, Text> {
         private String curKey;
-        private long nWords;
         private Text resultKey = new Text();
-        private DoubleWritable resultValue = new DoubleWritable();
+        private Text resultValue = new Text();
+        private Utils.Vocab gramFreq = new Utils.Vocab();
 
         private void add(String follow, Long count) {
             if(follow.equals("<self>")) {
@@ -115,52 +111,34 @@ public class GramFreq {
                 follow = curKey + follow;
             }
 
-            if(bin.containsKey(follow)) {
-                Long val = bin.get(follow);
-                bin.put(follow, val + count);
-            } else {
-                bin.put(follow, count);
-            }
+            gramFreq.add(follow, count);
         }
 
-        private double calcProb(String str) throws IOException{
-            final int length = str.length();
-            if(length <= 1) {
-                long count = bin.get(str);
-                return (double) count / nWords;
-            } else {
-                String base = str.substring(0, length - 1);
-                long baseCount = bin.get(base);
-                long count = bin.get(str);
-                return (double) count / baseCount;
-            }
-        }
 
-//        @Override
-//        protected void setup(Context context) throws IOException, InterruptedException {
-//            nWords = context.getCounter(VocabCounter.TOTAL_VOCAB).getValue();
-//        }
 
         @Override
         protected void reduce(Text key, Iterable<MapWritable> values, Context context) throws IOException, InterruptedException {
-            bin.clear();
+            gramFreq.bin.clear();
             curKey = key.toString();
 
             for(MapWritable val : values) {
                 for(Map.Entry<Writable, Writable> kv : val.entrySet()) {
                     String follow = ((Text) kv.getKey()).toString();
                     Long count = ((LongWritable) kv.getValue()).get();
-                    if (follow.equals("<all>")) nWords = count;
-                    else add(follow, count);
+                    add(follow, count);
                 }
             }
 
-            for(Map.Entry<String, Long> kv : bin.entrySet()) {
+            long nwords = context.getConfiguration().getLong(NumWordName, gramFreq.bin.size());
+            nwords = Math.max(nwords, context.getCounter(VocabCounter.TOTAL_VOCAB).getValue());
+            gramFreq.nWords = nwords;
+            context.getCounter(VocabCounter.TOTAL_VOCAB).setValue(gramFreq.nWords);
+
+            for(Map.Entry<String, Utils.Vocab.Values> kv : gramFreq.bin.entrySet()) {
                 resultKey.set(kv.getKey());
-                resultValue.set(calcProb(kv.getKey()));
+                resultValue.set(kv.getValue().freq + "\t" + gramFreq.calcProb(kv.getKey()));
                 context.write(resultKey, resultValue);
             }
-            bin.clear();
         }
     }
 }

@@ -1,21 +1,17 @@
 import java.io.IOException;
 import java.util.*;
 
-import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.*;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-public class TriGramCount {
-
-    public static class TriGramMapper
+public class NGramCount {
+    public static class CountMapper
             extends Mapper<Object, Text, Text, LongWritable> {
         private Map<String, Long> wordCount = new HashMap<String, Long>();
         long nWords = 0L;
-        final int N = 3;
+        int N;
+        final static String Num = "NumGram";
 
         private void add(String str) {
             if (wordCount.containsKey(str)){
@@ -30,18 +26,20 @@ public class TriGramCount {
         protected void setup(Context context) throws IOException, InterruptedException {
             wordCount.clear();
             nWords = 0L;
+            Configuration conf = context.getConfiguration();
+            N = conf.getInt(Num, 3);
         }
 
-        private void addTri(String str) {
+        private void addNGram(String str) {
             final int length = str.length();
+
             for(int i=0; i < length; ++i) {
                 add(str.substring(i, i+1));
                 nWords += 1;
-                if(i+1 < length) {
-                    add(str.substring(i, i+2));
-                    if(i+2 < length) {
-                        add(str.substring(i, i+3));
-                    }
+                for(int j=1; j < N; ++j) {
+                    if(i + j < length) {
+                        add(str.substring(i, i+j+1));
+                    } else break;
                 }
             }
         }
@@ -52,7 +50,7 @@ public class TriGramCount {
             str = Utils.filter(str);
             String[] tokens = Utils.splitPunct(str);
             for(String t : tokens) {
-                if(t.length() > 0) addTri(t);
+                addNGram(t);
             }
         }
 
@@ -74,7 +72,7 @@ public class TriGramCount {
     }
 
 
-    public static class TriGramReducer
+    public static class CountReducer
             extends Reducer<Text, LongWritable, Text, LongWritable> {
         private LongWritable result = new LongWritable();
         @Override
