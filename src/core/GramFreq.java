@@ -69,7 +69,6 @@ public class GramFreq {
             final int length = str.length();
 
             if(str.equals("<all>")) {
-                context.getConfiguration().setLong(NumWordName, val);
                 context.getCounter(VocabCounter.TOTAL_VOCAB).setValue(val);
                 return;
             }
@@ -129,8 +128,7 @@ public class GramFreq {
                 }
             }
 
-            long nwords = context.getConfiguration().getLong(NumWordName, gramFreq.bin.size());
-            nwords = Math.max(nwords, context.getCounter(VocabCounter.TOTAL_VOCAB).getValue());
+            long nwords = Math.max(gramFreq.bin.size(), context.getCounter(VocabCounter.TOTAL_VOCAB).getValue());
             gramFreq.nWords = nwords;
             context.getCounter(VocabCounter.TOTAL_VOCAB).setValue(gramFreq.nWords);
 
